@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>reNEST Real-Time Notifications</title>
+</head>
+<body>
+    <h1>reNEST Real-Time Notifications</h1>
+
+    <p id="status">Connecting...</p>
+
+    <h2>Notifications</h2>
+    <ul id="notifications"></ul>
+
+    <script src="http://localhost:5000/socket.io/socket.io.js"></script>
+
+    <script>
+        const token = prompt("Enter your reNEST login token:");
+        const status = document.getElementById("status");
+        const notifications = document.getElementById("notifications");
+
+        if (!token) {
+            status.textContent = "JWT token is required.";
+        } else {
+            const socket = io("http://localhost:5000", {
+                auth: { token }
+            });
+
+            socket.on("connect", () => {
+                status.textContent = "Connected successfully!";
+                console.log("Connected:", socket.id);
+            });
+
+            socket.on("connect_error", (error) => {
+                status.textContent = "Connection failed: " + error.message;
+                console.error("Socket error:", error.message);
+            });
+
+            socket.on("newRequest", (data) => {
+                const item = document.createElement("li");
+                item.textContent = "New request: " + data.message;
+                notifications.prepend(item);
+                console.log("New request notification:", data);
+            });
+
+            socket.on("requestStatusUpdated", (data) => {
+                const item = document.createElement("li");
+                item.textContent = "Request update: " + data.message;
+                notifications.prepend(item);
+                console.log("Request status notification:", data);
+            });
+
+            socket.on("disconnect", (reason) => {
+                status.textContent = "Disconnected: " + reason;
+                console.log("Disconnected:", reason);
+            });
+        }
+    </script>
+</body>
+</html>
