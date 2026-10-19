@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const listingController = require("../controllers/listingcontroller");
+const listingController = require("../controllers/Listingcontroller");
 const authMiddleware = require("../middleware/authmiddleware");
 
 // Get all available listings
