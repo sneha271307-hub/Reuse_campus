@@ -9,7 +9,7 @@ const connectDB = require("./config/db");
 
 const authRoutes = require("./routes/authroutes");
 const authMiddleware = require("./middleware/authmiddleware");
-const listingRoutes = require("./routes/listingroutes");
+const listingRoutes = require("./routes/Listingroutes");
 const requestRoutes = require("./routes/requestroutes");
 
 const app = express();
