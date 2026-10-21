@@ -1,5 +1,10 @@
 const Listing = require("../models/Listing");
 
+const {
+    predictListingCategory,
+    recommendListings
+} = require("../backend_integration");
+
 // CREATE LISTING
 const createListing = async (req, res) => {
     try {
@@ -12,27 +17,52 @@ const createListing = async (req, res) => {
             location
         } = req.body;
 
-        // Validate required fields
+        // Validate required fields (category can be predicted by ML)
         if (
             !title ||
             !description ||
-            !category ||
             !listingType ||
             !condition ||
             !location
         ) {
             return res.status(400).json({
                 success: false,
-                message: "All listing fields are required"
+                message:
+                    "Title, description, listing type, condition and location are required"
             });
         }
 
-        // Create listing using authenticated user's ID
+        // Predict category using the ML service
+        let finalCategory = category;
+
+        try {
+            const prediction = await predictListingCategory({
+                title,
+                description
+            });
+
+            if (prediction.predicted_category) {
+                finalCategory = prediction.predicted_category;
+            }
+        } catch (error) {
+            console.error("ML category prediction failed:", error.message);
+        }
+
+        // Fall back to the user's category if ML is unavailable
+        if (!finalCategory) {
+            return res.status(503).json({
+                success: false,
+                message:
+                    "ML category prediction is unavailable. Please try again or provide a category."
+            });
+        }
+
+        // Create listing using the authenticated user's ID
         const listing = await Listing.create({
             ownerId: req.user.id,
             title,
             description,
-            category,
+            category: finalCategory,
             listingType,
             condition,
             location
@@ -43,9 +73,15 @@ const createListing = async (req, res) => {
             message: "Item listed successfully",
             listing
         });
-
     } catch (error) {
-        console.error("Create listing error:", error.message);
+        console.error("Create listing error:", error);
+
+        if (error.name === "ValidationError") {
+            return res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
 
         return res.status(500).json({
             success: false,
@@ -53,21 +89,21 @@ const createListing = async (req, res) => {
         });
     }
 };
+
 // GET ALL AVAILABLE LISTINGS
 const getAllListings = async (req, res) => {
     try {
         const listings = await Listing.find({
             status: "available"
         })
-        .populate("ownerId", "name campus hostel")
-        .sort({ createdAt: -1 });
+            .populate("ownerId", "name campus hostel")
+            .sort({ createdAt: -1 });
 
         return res.status(200).json({
             success: true,
             count: listings.length,
             listings
         });
-
     } catch (error) {
         console.error("Get listings error:", error.message);
 
@@ -77,6 +113,47 @@ const getAllListings = async (req, res) => {
         });
     }
 };
+// GET ML-POWERED RECOMMENDATIONS
+const getRecommendedListings = async (req, res) => {
+    try {
+        const {
+            query = "",
+            category,
+            listingType,
+            location,
+            limit = 5
+        } = req.body;
+
+        // Fetch only currently available listings
+        const listings = await Listing.find({
+            status: "available"
+        }).lean();
+
+        const result = await recommendListings({
+            query,
+            category,
+            listingType,
+            location,
+            limit: Math.min(Math.max(Number(limit) || 5, 1), 20),
+            listings,
+            excludeListingIds: []
+        });
+
+        return res.status(200).json({
+            success: true,
+            recommendations: result.recommendations || result
+        });
+    } catch (error) {
+        console.error("Get recommended listings error:", error.message);
+
+        return res.status(502).json({
+            success: false,
+            message: "Unable to fetch ML recommendations"
+        });
+    }
+};
+
+// GET LISTING BY ID
 const getListingById = async (req, res) => {
     try {
         const listing = await Listing.findById(req.params.id)
@@ -93,7 +170,6 @@ const getListingById = async (req, res) => {
             success: true,
             listing
         });
-
     } catch (error) {
         console.error("Get listing by ID error:", error.message);
 
@@ -110,6 +186,8 @@ const getListingById = async (req, res) => {
         });
     }
 };
+
+// UPDATE LISTING
 const updateListing = async (req, res) => {
     try {
         const listing = await Listing.findById(req.params.id);
@@ -121,7 +199,6 @@ const updateListing = async (req, res) => {
             });
         }
 
-        // Only the owner can update the listing
         if (listing.ownerId.toString() !== req.user.id) {
             return res.status(403).json({
                 success: false,
@@ -151,7 +228,6 @@ const updateListing = async (req, res) => {
             message: "Listing updated successfully",
             listing
         });
-
     } catch (error) {
         console.error("Update listing error:", error.message);
 
@@ -175,6 +251,8 @@ const updateListing = async (req, res) => {
         });
     }
 };
+
+// DELETE LISTING (SOFT DELETE)
 const deleteListing = async (req, res) => {
     try {
         const listing = await Listing.findById(req.params.id);
@@ -186,7 +264,6 @@ const deleteListing = async (req, res) => {
             });
         }
 
-        // Only the owner can remove the listing
         if (listing.ownerId.toString() !== req.user.id) {
             return res.status(403).json({
                 success: false,
@@ -194,7 +271,6 @@ const deleteListing = async (req, res) => {
             });
         }
 
-        // Soft delete: preserve the record
         listing.status = "removed";
         await listing.save();
 
@@ -202,7 +278,6 @@ const deleteListing = async (req, res) => {
             success: true,
             message: "Listing removed successfully"
         });
-
     } catch (error) {
         console.error("Delete listing error:", error.message);
 
@@ -223,8 +298,8 @@ const deleteListing = async (req, res) => {
 module.exports = {
     createListing,
     getAllListings,
-     getListingById,
-      updateListing,
-         deleteListing
-         
+    getRecommendedListings,
+    getListingById,
+    updateListing,
+    deleteListing
 };
