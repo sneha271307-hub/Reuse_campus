@@ -13,6 +13,13 @@ const listingRoutes = require("./routes/Listingroutes");
 const requestRoutes = require("./routes/requestroutes");
 
 const app = express();
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "ReUse Campus backend is running",
+    timestamp: new Date().toISOString(),
+  });
+});
 const server = http.createServer(app);
 
 // Socket.IO configuration
@@ -49,6 +56,13 @@ app.get("/api/auth/test", authMiddleware, (req, res) => {
         message: "Authentication successful!",
         user: req.user
     });
+});
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "ReUse Campus backend is running",
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Socket.IO JWT authentication
