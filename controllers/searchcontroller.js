@@ -1,5 +1,5 @@
 
-const Search = require("../models/Search");
+const Search = require("../models/search");
 
 // Save a search query
 exports.saveSearch = async (req, res) => {
