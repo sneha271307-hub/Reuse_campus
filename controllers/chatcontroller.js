@@ -1,6 +1,6 @@
 
 const mongoose = require("mongoose");
-const Message = require("../models/Message");
+const Message = require("../models/message");
 const Request = require("../models/request");
 
 // ============================================
