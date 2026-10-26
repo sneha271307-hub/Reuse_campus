@@ -11,6 +11,13 @@ const authRoutes = require("./routes/authroutes");
 const authMiddleware = require("./middleware/authmiddleware");
 const listingRoutes = require("./routes/Listingroutes");
 const requestRoutes = require("./routes/requestroutes");
+const chatRoutes = require("./routes/chatroutes");
+const notificationRoutes = require("./routes/notificationroutes");
+const reportRoutes = require("./routes/reportroutes");
+const adminRoutes = require("./routes/adminroutes");
+const searchRoutes = require("./routes/searchroutes");
+const mlRoutes = require("./routes/mlroutes");
+const uploadRoutes = require("./routes/uploadroutes");
 
 const app = express();
 app.get("/api/health", (req, res) => {
@@ -40,7 +47,14 @@ app.use(express.json());
 app.use("/api/listings", listingRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/requests", requestRoutes);
-
+app.use("/api/requests", chatRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/reports", reportRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/searches", searchRoutes);
+app.use("/api/ml", mlRoutes);
+app.get("/api/recommendations", require("./middleware/authmiddleware"), require("./controllers/mlcontroller").getRecommendations);
+app.use("/api/uploads", uploadRoutes);
 // Home route
 app.get("/", (req, res) => {
     res.status(200).json({
@@ -57,13 +71,7 @@ app.get("/api/auth/test", authMiddleware, (req, res) => {
         user: req.user
     });
 });
-app.get("/api/health", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "ReUse Campus backend is running",
-    timestamp: new Date().toISOString(),
-  });
-});
+
 
 // Socket.IO JWT authentication
 io.use((socket, next) => {
